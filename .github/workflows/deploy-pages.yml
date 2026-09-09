@@ -39,6 +39,8 @@ jobs:
           npm test
 
       - name: Build GitHub Pages site
+        env:
+          VITE_API_URL: https://civicflow-api-tahahl.onrender.com
         run: npm run build -- --mode pages
 
       - name: Configure GitHub Pages
