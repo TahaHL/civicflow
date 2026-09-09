@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: civicflow-api-tahahl
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NODE_ENV
+        value: production
+      - key: APP_ORIGIN
+        value: https://tahahl.github.io
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: true
+      - key: DATABASE_SSL_REJECT_UNAUTHORIZED
+        value: true
