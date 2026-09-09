@@ -1,0 +1,109 @@
+import { useEffect, useMemo, useState } from 'react'
+import Header from '../components/Header'
+import ConfirmDeleteButton from '../components/ConfirmDeleteButton'
+import EditDialog from '../components/EditDialog'
+import Icon from '../components/Icon'
+import Sidebar from '../components/Sidebar'
+import { useAuth } from '../hooks/useAuth'
+import { api } from '../lib/api'
+import './Dashboard.css'
+
+function TasksPage() {
+  const { user } = useAuth()
+  const [tasks, setTasks] = useState([])
+  const [filter, setFilter] = useState('all')
+  const [form, setForm] = useState({ title: '', dueDate: '', priority: 'Medium' })
+  const [editingTask, setEditingTask] = useState(null)
+  const [editError, setEditError] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  useEffect(() => { api('/api/tasks').then((data) => setTasks(data.tasks)).catch(console.error) }, [])
+
+  const filteredTasks = useMemo(() => tasks.filter((task) => (
+    filter === 'open' ? !task.done : filter === 'completed' ? task.done : true
+  )), [tasks, filter])
+
+  async function addTask(event) {
+    event.preventDefault()
+    if (!form.title.trim()) return
+    const { task } = await api('/api/tasks', { method: 'POST', body: JSON.stringify(form) })
+    setTasks((current) => [task, ...current])
+    setForm({ title: '', dueDate: '', priority: 'Medium' })
+  }
+
+  async function toggleTask(task) {
+    const data = await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ done: !task.done }) })
+    setTasks((current) => current.map((item) => item.id === task.id ? data.task : item))
+  }
+
+  async function deleteTask(taskId) {
+    await api(`/api/tasks/${taskId}`, { method: 'DELETE' })
+    setTasks((current) => current.filter((task) => task.id !== taskId))
+  }
+
+  async function saveTaskEdit(event) {
+    event.preventDefault()
+    setSavingEdit(true)
+    setEditError('')
+    try {
+      const { task } = await api(`/api/tasks/${editingTask.id}`, { method: 'PATCH', body: JSON.stringify(editingTask) })
+      setTasks((current) => current.map((item) => item.id === task.id ? task : item))
+      setEditingTask(null)
+    } catch (error) { setEditError(error.message) }
+    finally { setSavingEdit(false) }
+  }
+
+  function formatDate(date) {
+    return date ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${date}T12:00:00`)) : 'No due date'
+  }
+
+  return (
+    <div className="app-shell">
+      <Sidebar />
+      <main className="dashboard tasks-page">
+        <Header firstName={user.firstName} title="Tasks" onAddItem={() => document.querySelector('#task-title')?.focus()} />
+        <section className="task-workspace">
+          <form className="task-creator panel" onSubmit={addTask}>
+            <div><p className="eyebrow">New task</p><h2>What needs doing?</h2></div>
+            <div className="task-creator__fields">
+              <label className="task-title-field">Task name<input id="task-title" onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Add something to your list" required value={form.title} /></label>
+              <label>Due date<input onChange={(event) => setForm({ ...form, dueDate: event.target.value })} type="date" value={form.dueDate} /></label>
+              <label>Priority<select onChange={(event) => setForm({ ...form, priority: event.target.value })} value={form.priority}><option>Low</option><option>Medium</option><option>High</option></select></label>
+              <button className="primary-button" type="submit"><Icon name="plus" size={18} /> Add task</button>
+            </div>
+          </form>
+
+          <section className="panel all-tasks" aria-labelledby="all-tasks-title">
+            <div className="panel__header task-list-header">
+              <div><p className="eyebrow">Your list</p><h2 id="all-tasks-title">All tasks <span>{tasks.length}</span></h2></div>
+              <div className="filter-tabs">
+                {['all', 'open', 'completed'].map((item) => <button className={filter === item ? 'active' : ''} key={item} onClick={() => setFilter(item)} type="button">{item}</button>)}
+              </div>
+            </div>
+            <div className="full-task-list">
+              {filteredTasks.map((task) => (
+                <article className={`full-task${task.done ? ' full-task--done' : ''}`} key={task.id}>
+                  <button className="task-check-button" onClick={() => toggleTask(task)} type="button" aria-label={`${task.done ? 'Reopen' : 'Complete'} ${task.title}`}><Icon name="check" size={15} /></button>
+                  <div className="full-task__content"><h3>{task.title}</h3><p>{formatDate(task.dueDate)}</p></div>
+                  <span className={`priority priority--${task.priority.toLowerCase()}`}>{task.priority}</span>
+                  <div className="row-actions"><button aria-label={`Edit ${task.title}`} className="edit-button" onClick={() => { setEditError(''); setEditingTask({ ...task }) }} type="button"><Icon name="edit" size={15} /></button><ConfirmDeleteButton className="delete-button" label={task.title} onConfirm={() => deleteTask(task.id)} /></div>
+                </article>
+              ))}
+              {!filteredTasks.length && <div className="empty-state"><span><Icon name="check" size={25} /></span><h3>Nothing here</h3><p>Your {filter === 'all' ? '' : filter} task list is clear.</p></div>}
+            </div>
+          </section>
+        </section>
+        <EditDialog error={editError} onClose={() => setEditingTask(null)} onSubmit={saveTaskEdit} open={Boolean(editingTask)} saving={savingEdit} title="Task">
+          {editingTask && <>
+            <label className="edit-field--full">Task name<input maxLength={120} onChange={(event) => setEditingTask({ ...editingTask, title: event.target.value })} required value={editingTask.title} /></label>
+            <label>Due date<input onChange={(event) => setEditingTask({ ...editingTask, dueDate: event.target.value })} type="date" value={editingTask.dueDate || ''} /></label>
+            <label>Priority<select onChange={(event) => setEditingTask({ ...editingTask, priority: event.target.value })} value={editingTask.priority}><option>Low</option><option>Medium</option><option>High</option></select></label>
+            <label className="edit-checkbox edit-field--full"><input checked={editingTask.done} onChange={(event) => setEditingTask({ ...editingTask, done: event.target.checked })} type="checkbox" /> Mark this task as completed</label>
+          </>}
+        </EditDialog>
+      </main>
+    </div>
+  )
+}
+
+export default TasksPage
