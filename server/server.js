@@ -13,6 +13,7 @@ const app = express()
 const port = process.env.PORT || 3001
 const isProduction = process.env.NODE_ENV === 'production'
 const sessionCookieName = 'civicflow_session'
+const allowedOrigins = (process.env.APP_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean)
 const defaultPreferences = {
   taskReminders: true,
   appointmentReminders: true,
@@ -23,15 +24,28 @@ const defaultPreferences = {
 if (isProduction) app.set('trust proxy', 1)
 app.use(helmet({ contentSecurityPolicy: isProduction ? undefined : false }))
 app.use(express.json({ limit: '32kb' }))
-app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-8', legacyHeaders: false }))
-app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false, skipSuccessfulRequests: true }))
 app.use('/api', (request, response, next) => {
-  if (!isProduction || ['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return next()
-  const allowedOrigin = process.env.APP_ORIGIN
   const requestOrigin = request.get('origin')
-  if (allowedOrigin && requestOrigin && requestOrigin !== allowedOrigin) return response.status(403).json({ message: 'Request origin is not allowed.' })
+  const originAllowed = requestOrigin && allowedOrigins.includes(requestOrigin)
+
+  if (originAllowed) {
+    response.setHeader('Access-Control-Allow-Origin', requestOrigin)
+    response.setHeader('Access-Control-Allow-Credentials', 'true')
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    response.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PATCH,DELETE,OPTIONS')
+    response.setHeader('Vary', 'Origin')
+  }
+
+  if (request.method === 'OPTIONS') {
+    if (isProduction && requestOrigin && !originAllowed) return response.status(403).end()
+    return response.status(204).end()
+  }
+
+  if (isProduction && requestOrigin && !originAllowed) return response.status(403).json({ message: 'Request origin is not allowed.' })
   next()
 })
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-8', legacyHeaders: false }))
+app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false, skipSuccessfulRequests: true }))
 
 app.get('/api/health', async (request, response, next) => {
   try {
@@ -70,7 +84,7 @@ function createSession(response, database, userId) {
   const token = crypto.randomBytes(32).toString('hex')
   database.sessions = database.sessions.filter((session) => session.expiresAt > Date.now())
   database.sessions.push({ token: sessionTokenHash(token), userId, expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 })
-  response.setHeader('Set-Cookie', `${sessionCookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${isProduction ? '; Secure' : ''}`)
+  response.setHeader('Set-Cookie', `${sessionCookieName}=${token}; HttpOnly; Path=/; Max-Age=604800${isProduction ? '; SameSite=None; Secure' : '; SameSite=Lax'}`)
 }
 
 async function clearSession(request, response) {
@@ -81,7 +95,7 @@ async function clearSession(request, response) {
     database.sessions = database.sessions.filter((session) => session.token !== token && session.token !== tokenHash)
     await writeDatabase(database)
   }
-  response.setHeader('Set-Cookie', `${sessionCookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${isProduction ? '; Secure' : ''}`)
+  response.setHeader('Set-Cookie', `${sessionCookieName}=; HttpOnly; Path=/; Max-Age=0${isProduction ? '; SameSite=None; Secure' : '; SameSite=Lax'}`)
 }
 
 async function requireUser(request, response, next) {
