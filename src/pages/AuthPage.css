@@ -72,3 +72,24 @@
   .auth-intro__content > p:last-child, .auth-quote { display: none; }
   .auth-form-side { padding: 42px 24px 60px; }
 }
+
+@media (max-width: 480px) {
+  .auth-intro { min-height: 230px; padding: 22px 18px; }
+  .auth-intro__content { margin: 34px 0 12px; }
+  .auth-intro h1 { max-width: 340px; font-size: clamp(34px, 12vw, 43px); }
+  .auth-form-side { min-width: 0; padding: 34px 18px 48px; }
+  .auth-card { min-width: 0; }
+  .auth-card__heading h2 { font-size: 28px; }
+  .auth-tabs { margin-block: 25px 22px; }
+}
+
+/* Authentication intentionally uses a light form surface in every app theme. */
+.auth-form-side .auth-card__heading h2 { color: #191a27; }
+.auth-form-side .auth-card__heading > p:last-child { color: #74798d; }
+.auth-form-side .auth-form label { color: #45495b; }
+:root[data-theme='dark'] .auth-page .auth-form input,
+:root[data-theme='system'] .auth-page .auth-form input {
+  border-color: #d8d9e2;
+  color: #191a27;
+  background: #fff;
+}
