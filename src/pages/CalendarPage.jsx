@@ -47,6 +47,7 @@ function CalendarPage() {
   const [editingAppointment, setEditingAppointment] = useState(null)
   const [formError, setFormError] = useState('')
   const [editError, setEditError] = useState('')
+  const [dayMessage, setDayMessage] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [isMobileCalendar, setIsMobileCalendar] = useState(false)
   const titleRef = useRef(null)
@@ -158,6 +159,7 @@ function CalendarPage() {
     setComposing(false)
     setSelection(null)
     setFormError('')
+    setDayMessage('')
   }
 
   function timelineMinute(event) {
@@ -210,13 +212,30 @@ function CalendarPage() {
   }
 
   async function completeAppointment(item) {
-    const { appointment } = await api('/api/appointments/' + item.id, { method: 'PATCH', body: JSON.stringify({ completed: true }) })
-    setAppointments((current) => current.map((existing) => existing.id === appointment.id ? appointment : existing))
+    setDayMessage('')
+    setFormError('')
+    setAppointments((current) => current.map((existing) => existing.id === item.id ? { ...existing, completed: true } : existing))
+    try {
+      await api('/api/appointments/' + item.id, { method: 'PATCH', body: JSON.stringify({ completed: true }) })
+      setDayMessage(`“${item.title}” marked as completed.`)
+    } catch (error) {
+      setAppointments((current) => current.map((existing) => existing.id === item.id ? { ...existing, completed: false } : existing))
+      setFormError(error.message)
+    }
   }
 
   async function toggleFocusedTask(task) {
-    const data = await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ done: !task.done }) })
-    setTasks((current) => current.map((item) => item.id === task.id ? data.task : item))
+    setDayMessage('')
+    setFormError('')
+    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, done: !task.done } : item))
+    try {
+      const data = await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ done: !task.done }) })
+      setTasks((current) => current.map((item) => item.id === task.id ? data.task : item))
+      setDayMessage(`“${task.title}” marked as completed.`)
+    } catch (error) {
+      setTasks((current) => current.map((item) => item.id === task.id ? task : item))
+      setFormError(error.message)
+    }
   }
 
   async function deleteTask(id) {
@@ -288,10 +307,10 @@ function CalendarPage() {
         </section>
 
         {focusedDate && (
-          <div className="day-focus-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDay() }}>
+          <div className={`day-focus-backdrop${composing ? ' day-focus-backdrop--composing' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDay() }}>
             <section aria-labelledby="day-focus-title" aria-modal="true" className={`day-focus-dialog${composing ? ' day-focus-dialog--composing' : ''}`} role="dialog">
               <header className="day-focus__header">
-                <div><p className="eyebrow">Full day</p><h2 id="day-focus-title">{formatDate(focusedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2><p>{focusedAppointments.length} event{focusedAppointments.length === 1 ? '' : 's'} · {focusedTasks.length} task{focusedTasks.length === 1 ? '' : 's'}</p></div>
+                <div><p className="eyebrow">Full day</p><h2 id="day-focus-title">{formatDate(focusedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2><p>{focusedAppointments.length} event{focusedAppointments.length === 1 ? '' : 's'} · {focusedTasks.length} task{focusedTasks.length === 1 ? '' : 's'}</p>{dayMessage && <p className="day-focus__message" role="status">{dayMessage}</p>}{formError && !composing && <p className="day-focus__message day-focus__message--error" role="alert">{formError}</p>}</div>
                 <button aria-label="Close day planner" onClick={closeDay} type="button"><Icon name="close" size={19} /></button>
               </header>
               <div className={`day-focus__body${composing ? ' day-focus__body--composing' : ''}`}>

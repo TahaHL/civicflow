@@ -923,6 +923,8 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
 .day-focus__header { padding: 22px 25px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .day-focus__header h2 { margin: 4px 0 5px; font-size: clamp(22px, 3vw, 31px); letter-spacing: -.05em; }
 .day-focus__header > div > p:last-child { color: var(--muted); font-size: 10px; }
+.day-focus__header .day-focus__message { width: fit-content; margin-top: 8px; padding: 6px 9px; border-radius: 8px; color: #3f4ca0; background: #efedff; font-size: 9px; font-weight: 700; }
+.day-focus__header .day-focus__message--error { color: #a9433a; background: #fff0ed; }
 .day-focus__header > button { width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; color: var(--text); background: var(--surface-soft); cursor: pointer; }
 .day-focus__body { min-height: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0,1fr) 330px; }
 .day-focus__timeline-wrap { min-width: 0; min-height: 0; padding: 17px 18px 18px 22px; border-right: 1px solid var(--border); display: grid; grid-template-rows: auto minmax(0,1fr); }
@@ -2011,6 +2013,10 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
   .edit-dialog__footer > button,
   .edit-dialog__footer .primary-button { width: 100%; min-width: 0; min-height: 46px; padding-inline: 16px; border-radius: 12px; font-size: 11px; white-space: nowrap; }
   :root[data-theme='dark'] :is(.mobile-day-event, .mobile-day-task) { background: linear-gradient(120deg, #1a1c2e, #20213a); }
+  .day-focus-backdrop--composing { padding: clamp(12px, 4vw, 24px); align-items: center; }
+  .day-focus-backdrop--composing .day-focus-dialog--composing { width: min(100%, 560px); height: auto; max-height: calc(100dvh - 28px); margin: auto; border-radius: 24px; }
+  .day-focus-backdrop--composing .day-focus__body--composing { min-height: 0; max-height: calc(100dvh - 135px); overflow-y: auto; }
+  .day-focus-backdrop--composing .day-focus__body--composing .day-focus__side { min-height: 0; }
 }
 
 @media (max-width: 760px) and (prefers-color-scheme: dark) {
