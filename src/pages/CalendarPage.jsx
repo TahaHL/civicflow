@@ -83,10 +83,10 @@ function CalendarPage() {
   const focusedAppointments = appointments
     .filter((item) => item.date === focusedDate)
     .sort((a, b) => a.time.localeCompare(b.time))
-  const focusedTasks = tasks.filter((item) => item.dueDate === focusedDate)
+  const focusedTasks = tasks.filter((item) => !item.done && item.dueDate === focusedDate)
   const selectedAppointments = appointments.filter((item) => item.date === selectedDate)
-  const selectedTasks = tasks.filter((item) => item.dueDate === selectedDate)
-  const upcomingTasks = tasks.filter((item) => !item.done && item.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5)
+  const selectedTasks = tasks.filter((item) => !item.done && item.dueDate === selectedDate)
+  const upcomingTasks = tasks.filter((item) => !item.done && item.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5)
   const upcomingAppointments = appointments.filter((item) => item.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 5)
 
   useEffect(() => {
@@ -214,6 +214,11 @@ function CalendarPage() {
     setTasks((current) => current.map((item) => item.id === task.id ? data.task : item))
   }
 
+  async function deleteTask(id) {
+    await api(`/api/tasks/${id}`, { method: 'DELETE' })
+    setTasks((current) => current.filter((item) => item.id !== id))
+  }
+
   async function saveAppointmentEdit(event) {
     event.preventDefault()
     setSavingEdit(true)
@@ -299,7 +304,7 @@ function CalendarPage() {
                     </div>
                     <div className="mobile-day-planner__heading mobile-day-planner__heading--tasks"><p className="eyebrow">Tasks due</p><h3>{focusedTasks.length ? `${focusedTasks.length} to keep in view` : 'Nothing due today'}</h3></div>
                     <div className="mobile-day-planner__tasks">
-                      {focusedTasks.map((task) => <button className={task.done ? 'mobile-day-task mobile-day-task--done' : 'mobile-day-task'} key={task.id} onClick={() => toggleFocusedTask(task)} type="button"><span className="mobile-day-task__check"><Icon name="check" size={14} /></span><span><strong>{task.title}</strong><small>{task.priority} priority · {task.done ? 'Completed' : 'Tap to complete'}</small></span></button>)}
+                      {focusedTasks.map((task) => <article className="mobile-day-task" key={task.id}><span className="mobile-day-task__check"><Icon name="check" size={14} /></span><span><strong>{task.title}</strong><small>{task.priority} priority</small></span><div className="mobile-day-task__actions"><button onClick={() => toggleFocusedTask(task)} type="button"><Icon name="check" size={13} /> Mark as completed</button><ConfirmDeleteButton label={task.title} onConfirm={() => deleteTask(task.id)} /></div></article>)}
                       {!focusedTasks.length && <p className="mobile-day-planner__task-empty">A calm day—there are no tasks due.</p>}
                     </div>
                   </div>
@@ -331,11 +336,12 @@ function CalendarPage() {
                     <div className="day-focus__summary">
                       <p className="eyebrow">On this day</p><h3>{focusedAppointments.length ? 'Your schedule' : 'Nothing planned yet'}</h3>
                       <p>{focusedAppointments.length ? 'Select an event to edit it, or use the planner to add another.' : 'Use the planner to reserve time for something important.'}</p>
-                      <div>{focusedAppointments.map((item) => {
+                       <div>{focusedAppointments.map((item) => {
                         const endTime = item.endTime || defaultEnd(item.time)
                         return <article key={item.id}><time>{item.time}<span>–{endTime}</span></time><span><strong>{item.title}</strong><small>{item.location || 'No location'}</small></span><div className="row-actions"><button aria-label={'Edit ' + item.title} className="edit-button" onClick={() => { setEditError(''); setEditingAppointment({ ...item, endTime }) }} type="button"><Icon name="edit" size={14} /></button><ConfirmDeleteButton label={item.title} onConfirm={() => deleteAppointment(item.id)} /></div></article>
-                      })}</div>
-                    </div>
+                       })}</div>
+                       {focusedTasks.length > 0 && <div className="day-focus__tasks"><p className="eyebrow">Outstanding tasks</p>{focusedTasks.map((task) => <article key={task.id}><span><strong>{task.title}</strong><small>{task.priority} priority</small></span><div className="row-actions"><button aria-label={`Mark ${task.title} as completed`} className="complete-task-button" onClick={() => toggleFocusedTask(task)} type="button"><Icon name="check" size={14} /></button><ConfirmDeleteButton label={task.title} onConfirm={() => deleteTask(task.id)} /></div></article>)}</div>}
+                     </div>
                   )}
                 </aside>
               </div>
