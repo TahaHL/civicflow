@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Header from '../components/Header'
 import ConfirmDeleteButton from '../components/ConfirmDeleteButton'
 import EditDialog from '../components/EditDialog'
@@ -10,8 +11,10 @@ import './Dashboard.css'
 
 function TasksPage() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tasks, setTasks] = useState([])
-  const [filter, setFilter] = useState('all')
+  const requestedView = searchParams.get('view')
+  const [filter, setFilter] = useState(requestedView === 'deadlines' ? 'deadlines' : requestedView === 'open' ? 'open' : 'all')
   const [form, setForm] = useState({ title: '', dueDate: '', priority: 'Medium' })
   const [editingTask, setEditingTask] = useState(null)
   const [editError, setEditError] = useState('')
@@ -19,9 +22,27 @@ function TasksPage() {
 
   useEffect(() => { api('/api/tasks').then((data) => setTasks(data.tasks)).catch(console.error) }, [])
 
-  const filteredTasks = useMemo(() => tasks.filter((task) => (
-    filter === 'open' ? !task.done : filter === 'completed' ? task.done : true
-  )), [tasks, filter])
+  const today = useMemo(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  }, [])
+  const deadlineTasks = useMemo(() => tasks
+    .filter((task) => !task.done && task.dueDate)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || ({ High: 0, Medium: 1, Low: 2 }[a.priority] - { High: 0, Medium: 1, Low: 2 }[b.priority])), [tasks])
+  const filteredTasks = useMemo(() => {
+    if (filter === 'deadlines') return deadlineTasks
+    return tasks.filter((task) => filter === 'open' ? !task.done : filter === 'completed' ? task.done : true)
+  }, [tasks, filter, deadlineTasks])
+  const deadlineStats = useMemo(() => {
+    const weekEnd = new Date(`${today}T12:00:00`)
+    weekEnd.setDate(weekEnd.getDate() + 7)
+    const weekEndKey = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`
+    return {
+      overdue: deadlineTasks.filter((task) => task.dueDate < today).length,
+      today: deadlineTasks.filter((task) => task.dueDate === today).length,
+      thisWeek: deadlineTasks.filter((task) => task.dueDate > today && task.dueDate <= weekEndKey).length,
+    }
+  }, [deadlineTasks, today])
 
   async function addTask(event) {
     event.preventDefault()
@@ -57,6 +78,21 @@ function TasksPage() {
     return date ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${date}T12:00:00`)) : 'No due date'
   }
 
+  function deadlineDetails(date) {
+    const days = Math.round((new Date(`${date}T12:00:00`) - new Date(`${today}T12:00:00`)) / 86400000)
+    if (days < 0) return { label: `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} overdue`, state: 'overdue' }
+    if (days === 0) return { label: 'Due today', state: 'today' }
+    if (days === 1) return { label: 'Due tomorrow', state: 'soon' }
+    if (days <= 7) return { label: `Due in ${days} days`, state: 'soon' }
+    return { label: formatDate(date), state: 'scheduled' }
+  }
+
+  function changeFilter(nextFilter) {
+    setFilter(nextFilter)
+    if (nextFilter === 'deadlines' || nextFilter === 'open') setSearchParams({ view: nextFilter }, { replace: true })
+    else setSearchParams({}, { replace: true })
+  }
+
   return (
     <div className="app-shell">
       <Sidebar />
@@ -75,21 +111,34 @@ function TasksPage() {
 
           <section className="panel all-tasks" aria-labelledby="all-tasks-title">
             <div className="panel__header task-list-header">
-              <div><p className="eyebrow">Your list</p><h2 id="all-tasks-title">All tasks <span>{tasks.length}</span></h2></div>
+              <div><p className="eyebrow">{filter === 'deadlines' ? 'Deadline focus' : 'Your list'}</p><h2 id="all-tasks-title">{filter === 'deadlines' ? 'Upcoming deadlines' : 'All tasks'} <span>{filteredTasks.length}</span></h2></div>
               <div className="filter-tabs">
-                {['all', 'open', 'completed'].map((item) => <button className={filter === item ? 'active' : ''} key={item} onClick={() => setFilter(item)} type="button">{item}</button>)}
+                {['all', 'open', 'deadlines', 'completed'].map((item) => <button className={filter === item ? 'active' : ''} key={item} onClick={() => changeFilter(item)} type="button">{item}</button>)}
               </div>
             </div>
+            {filter === 'deadlines' && <div className="deadline-focus" aria-label="Deadline summary">
+              <div className="deadline-focus__next">
+                <span className="deadline-focus__icon"><Icon name="clock" size={19} /></span>
+                <div><small>{deadlineTasks[0]?.dueDate < today ? 'Needs attention first' : 'Next deadline'}</small><strong>{deadlineTasks[0]?.title || 'No upcoming deadlines'}</strong><p>{deadlineTasks[0] ? deadlineDetails(deadlineTasks[0].dueDate).label : 'Add a due date to a task and it will appear here.'}</p></div>
+                {deadlineTasks[0] && <button onClick={() => { setEditError(''); setEditingTask({ ...deadlineTasks[0] }) }} type="button">Review task <Icon name="arrow" size={14} /></button>}
+              </div>
+              <div className="deadline-focus__stats">
+                <span><strong>{deadlineStats.overdue}</strong><small>Overdue</small></span>
+                <span><strong>{deadlineStats.today}</strong><small>Due today</small></span>
+                <span><strong>{deadlineStats.thisWeek}</strong><small>Next 7 days</small></span>
+              </div>
+            </div>}
             <div className="full-task-list">
-              {filteredTasks.map((task) => (
-                <article className={`full-task${task.done ? ' full-task--done' : ''}`} key={task.id}>
+              {filteredTasks.map((task) => {
+                const deadline = task.dueDate ? deadlineDetails(task.dueDate) : null
+                return <article className={`full-task${task.done ? ' full-task--done' : ''}${filter === 'deadlines' ? ` full-task--deadline full-task--${deadline.state}` : ''}`} key={task.id}>
                   <button className="task-check-button" onClick={() => toggleTask(task)} type="button" aria-label={`${task.done ? 'Reopen' : 'Complete'} ${task.title}`}><Icon name="check" size={15} /></button>
-                  <div className="full-task__content"><h3>{task.title}</h3><p>{formatDate(task.dueDate)}</p></div>
+                  <div className="full-task__content"><h3>{task.title}</h3><p>{filter === 'deadlines' ? deadline.label : formatDate(task.dueDate)}</p></div>
                   <span className={`priority priority--${task.priority.toLowerCase()}`}>{task.priority}</span>
                   <div className="row-actions"><button aria-label={`Edit ${task.title}`} className="edit-button" onClick={() => { setEditError(''); setEditingTask({ ...task }) }} type="button"><Icon name="edit" size={15} /></button><ConfirmDeleteButton className="delete-button" label={task.title} onConfirm={() => deleteTask(task.id)} /></div>
                 </article>
-              ))}
-              {!filteredTasks.length && <div className="empty-state"><span><Icon name="check" size={25} /></span><h3>Nothing here</h3><p>Your {filter === 'all' ? '' : filter} task list is clear.</p></div>}
+              })}
+              {!filteredTasks.length && <div className="empty-state"><span><Icon name="check" size={25} /></span><h3>{filter === 'deadlines' ? 'No deadlines on the horizon' : 'Nothing here'}</h3><p>{filter === 'deadlines' ? 'Add a due date to an open task to build your deadline view.' : `Your ${filter === 'all' ? '' : filter} task list is clear.`}</p></div>}
             </div>
           </section>
         </section>

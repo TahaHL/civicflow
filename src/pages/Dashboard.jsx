@@ -47,10 +47,13 @@ function Dashboard() {
     return balance
   }, 0)
   const currency = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })
+  const openTasks = tasks.filter((task) => !task.done)
+  const deadlineTasks = openTasks.filter((task) => task.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  const nextDeadline = deadlineTasks[0]
 
   const summaryItems = [
-    { id: 1, number: tasks.filter((task) => !task.done).length, label: 'Open tasks', detail: `${tasks.filter((task) => !task.done && task.dueDate === today).length} due today`, action: 'View tasks', icon: 'check', tone: 'violet', to: '/tasks' },
-    { id: 2, number: tasks.filter((task) => !task.done && task.dueDate).length, label: 'Deadlines', detail: 'Coming up', action: 'View deadlines', icon: 'clock', tone: 'amber', to: '/tasks' },
+    { id: 1, number: openTasks.length, label: 'Open tasks', detail: `${openTasks.filter((task) => task.dueDate === today).length} due today`, action: 'View tasks', icon: 'check', tone: 'violet', to: '/tasks?view=open' },
+    { id: 2, number: deadlineTasks.length, label: 'Upcoming deadlines', detail: nextDeadline ? taskDueLabel(nextDeadline.dueDate) : 'Nothing scheduled', action: 'Review deadlines', icon: 'clock', tone: 'amber', to: '/tasks?view=deadlines' },
     { id: 3, number: appointments.length, label: 'Appointments', detail: 'On your calendar', action: 'View calendar', icon: 'calendar', tone: 'blue', to: '/calendar' },
     { id: 4, number: currency.format(accountBalance / 100), label: 'Account balance', detail: `${unpaidBills.length} bill${unpaidBills.length === 1 ? '' : 's'} still due`, action: 'View finances', icon: 'wallet', tone: 'teal', to: '/money' },
   ]
