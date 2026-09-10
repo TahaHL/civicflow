@@ -1040,13 +1040,17 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
   .mobile-day-planner__heading h3 { margin-top: 3px; color: var(--heading); font-size: 17px; }
   .mobile-day-planner__heading--tasks { margin-top: 12px; }
   .mobile-day-planner__events { display: grid; gap: 8px; }
-  .mobile-day-planner__events > button { width: 100%; min-height: 62px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 13px; display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 11px; color: var(--text); background: var(--surface); text-align: left; }
+  .mobile-day-event { width: 100%; min-height: 62px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 13px; display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 9px 11px; color: var(--text); background: var(--surface); text-align: left; }
   .mobile-day-planner__events time { color: #6255d9; font-size: 10px; font-weight: 750; }
   .mobile-day-planner__events time span, .mobile-day-planner__events strong, .mobile-day-planner__events small { display: block; }
   .mobile-day-planner__events time span { margin-top: 3px; color: var(--muted); }
   .mobile-day-planner__events strong { color: var(--heading); font-size: 11px; }
   .mobile-day-planner__events small { margin-top: 4px; color: var(--muted); font-size: 9px; }
   .mobile-day-planner__events svg { color: #7b8091; }
+  .mobile-day-event__actions { grid-column: 2 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+  .mobile-day-event__actions > button:first-child { min-height: 32px; padding: 0 10px; border: 0; border-radius: 9px; display: inline-flex; align-items: center; gap: 5px; color: #5548c8; background: #efedff; font: inherit; font-size: 9px; font-weight: 750; cursor: pointer; }
+  .mobile-day-event__actions > button:first-child svg { color: currentColor; }
+  .mobile-day-event__actions .delete-button { width: 32px; height: 32px; }
   .mobile-day-planner__empty { min-height: 72px; padding: 13px; border-radius: 13px; display: flex; align-items: center; gap: 11px; color: #6255d9; background: var(--surface-soft); }
   .mobile-day-planner__empty strong, .mobile-day-planner__empty small { display: block; }
   .mobile-day-planner__empty strong { color: var(--heading); font-size: 11px; }

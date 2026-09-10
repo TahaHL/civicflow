@@ -222,7 +222,7 @@ function buildNotifications(database, userId) {
       link: '/tasks',
     })
   }
-  for (const appointment of database.appointments.filter((item) => preferences.appointmentReminders && item.userId === userId)) {
+  for (const appointment of database.appointments.filter((item) => preferences.appointmentReminders && item.userId === userId && !item.completed)) {
     const days = daysFromToday(appointment.date)
     if (days >= 0 && days <= 7) notifications.push({
       id: `appointment-${appointment.id}`, type: 'appointment', sourceId: appointment.id,
@@ -456,6 +456,7 @@ app.post('/api/appointments', requireUser, async (request, response, next) => {
     const appointment = {
       id: crypto.randomUUID(), userId: request.user.id, title, date, time, endTime,
       location: request.body.location?.trim() || '', notes: request.body.notes?.trim() || '',
+      completed: false,
       createdAt: new Date().toISOString(),
     }
     const database = await readDatabase()
@@ -476,6 +477,7 @@ app.patch('/api/appointments/:id', requireUser, async (request, response, next) 
     if (request.body.endTime !== undefined) appointment.endTime = request.body.endTime
     if (typeof request.body.location === 'string') appointment.location = request.body.location.trim().slice(0, 150)
     if (typeof request.body.notes === 'string') appointment.notes = request.body.notes.trim().slice(0, 500)
+    if (typeof request.body.completed === 'boolean') appointment.completed = request.body.completed
     appointment.endTime ||= timeAfter(appointment.time)
     if (!appointment.title || appointment.title.length > 120 || !/^\d{4}-\d{2}-\d{2}$/.test(appointment.date) || !validTimeRange(appointment.time, appointment.endTime)) return response.status(400).json({ message: 'Choose a valid title, date, start time and end time.' })
     await writeDatabase(database)

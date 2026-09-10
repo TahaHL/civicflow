@@ -39,6 +39,7 @@ sqlite.exec(`
     end_time TEXT,
     location TEXT NOT NULL DEFAULT '',
     notes TEXT NOT NULL DEFAULT '',
+    completed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS documents (
@@ -96,12 +97,13 @@ sqlite.exec(`
 
 const appointmentColumns = sqlite.prepare('PRAGMA table_info(appointments)').all()
 if (!appointmentColumns.some((column) => column.name === 'end_time')) sqlite.exec('ALTER TABLE appointments ADD COLUMN end_time TEXT')
+if (!appointmentColumns.some((column) => column.name === 'completed')) sqlite.exec('ALTER TABLE appointments ADD COLUMN completed INTEGER NOT NULL DEFAULT 0')
 
 export function readDatabase() {
   return {
     users: sqlite.prepare('SELECT * FROM users').all().map((row) => ({ id: row.id, firstName: row.first_name, email: row.email, passwordHash: row.password_hash, preferences: JSON.parse(row.preferences), createdAt: row.created_at })),
     tasks: sqlite.prepare('SELECT * FROM tasks').all().map((row) => ({ id: row.id, userId: row.user_id, title: row.title, priority: row.priority, dueDate: row.due_date, done: Boolean(row.done), createdAt: row.created_at })),
-    appointments: sqlite.prepare('SELECT * FROM appointments').all().map((row) => ({ id: row.id, userId: row.user_id, title: row.title, date: row.date, time: row.time, endTime: row.end_time, location: row.location, notes: row.notes, createdAt: row.created_at })),
+    appointments: sqlite.prepare('SELECT * FROM appointments').all().map((row) => ({ id: row.id, userId: row.user_id, title: row.title, date: row.date, time: row.time, endTime: row.end_time, location: row.location, notes: row.notes, completed: Boolean(row.completed), createdAt: row.created_at })),
     documents: sqlite.prepare('SELECT * FROM documents').all().map((row) => ({ id: row.id, userId: row.user_id, name: row.name, category: row.category, issuer: row.issuer, expiryDate: row.expiry_date, notes: row.notes, createdAt: row.created_at })),
     moneyRecords: sqlite.prepare('SELECT * FROM money_records').all().map((row) => ({ id: row.id, userId: row.user_id, title: row.title, type: row.type, category: row.category, amountPence: Number(row.amount_pence), date: row.date, frequency: row.frequency, paid: Boolean(row.paid), notes: row.notes, createdAt: row.created_at })),
     budgets: sqlite.prepare('SELECT * FROM budgets').all().map((row) => ({ id: row.id, userId: row.user_id, category: row.category, month: row.month, limitPence: Number(row.limit_pence), rollover: Boolean(row.rollover), createdAt: row.created_at })),
@@ -118,8 +120,8 @@ export function writeDatabase(database) {
     for (const item of database.users || []) insertUser.run(item.id, item.firstName, item.email, item.passwordHash, JSON.stringify(item.preferences || {}), item.createdAt)
     const insertTask = sqlite.prepare('INSERT INTO tasks VALUES (?, ?, ?, ?, ?, ?, ?)')
     for (const item of database.tasks || []) insertTask.run(item.id, item.userId, item.title, item.priority, item.dueDate, item.done ? 1 : 0, item.createdAt)
-    const insertAppointment = sqlite.prepare('INSERT INTO appointments (id, user_id, title, date, time, end_time, location, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    for (const item of database.appointments || []) insertAppointment.run(item.id, item.userId, item.title, item.date, item.time, item.endTime || null, item.location || '', item.notes || '', item.createdAt)
+    const insertAppointment = sqlite.prepare('INSERT INTO appointments (id, user_id, title, date, time, end_time, location, notes, completed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    for (const item of database.appointments || []) insertAppointment.run(item.id, item.userId, item.title, item.date, item.time, item.endTime || null, item.location || '', item.notes || '', item.completed ? 1 : 0, item.createdAt)
     const insertDocument = sqlite.prepare('INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     for (const item of database.documents || []) insertDocument.run(item.id, item.userId, item.name, item.category, item.issuer || '', item.expiryDate, item.notes || '', item.createdAt)
     const insertMoneyRecord = sqlite.prepare('INSERT INTO money_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')

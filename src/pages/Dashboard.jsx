@@ -40,6 +40,7 @@ function Dashboard() {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const currentMonth = today.slice(0, 7)
   const currentMoneyRecords = moneyRecords.filter((record) => record.date.startsWith(currentMonth))
+  const upcomingAppointments = appointments.filter((appointment) => !appointment.completed && appointment.date >= today)
   const unpaidBills = currentMoneyRecords.filter((record) => record.type === 'bill' && !record.paid)
   const accountBalance = moneyRecords.reduce((balance, record) => {
     if (record.type === 'income') return balance + record.amountPence
@@ -54,7 +55,7 @@ function Dashboard() {
   const summaryItems = [
     { id: 1, number: openTasks.length, label: 'Open tasks', detail: `${openTasks.filter((task) => task.dueDate === today).length} due today`, action: 'View tasks', icon: 'check', tone: 'violet', to: '/tasks?view=open' },
     { id: 2, number: deadlineTasks.length, label: 'Upcoming deadlines', detail: nextDeadline ? taskDueLabel(nextDeadline.dueDate) : 'Nothing scheduled', action: 'Review deadlines', icon: 'clock', tone: 'amber', to: '/tasks?view=deadlines' },
-    { id: 3, number: appointments.length, label: 'Appointments', detail: 'On your calendar', action: 'View calendar', icon: 'calendar', tone: 'blue', to: '/calendar' },
+    { id: 3, number: upcomingAppointments.length, label: 'Appointments', detail: 'Still ahead', action: 'View calendar', icon: 'calendar', tone: 'blue', to: '/calendar' },
     { id: 4, number: currency.format(accountBalance / 100), label: 'Account balance', detail: `${unpaidBills.length} bill${unpaidBills.length === 1 ? '' : 's'} still due`, action: 'View finances', icon: 'wallet', tone: 'teal', to: '/money' },
   ]
 
@@ -159,7 +160,7 @@ function Dashboard() {
               <Link className="text-button" to="/calendar">Calendar <Icon name="arrow" size={16} /></Link>
             </div>
             <div className="appointment-list">
-              {appointments.slice(0, 3).map((appointment) => {
+              {upcomingAppointments.slice(0, 3).map((appointment) => {
                 const appointmentDate = new Date(`${appointment.date}T12:00:00`)
                 return (
                 <article className="appointment" key={appointment.id}>
@@ -169,7 +170,7 @@ function Dashboard() {
                 </article>
                 )
               })}
-              {!appointments.length && <div className="schedule-empty"><span><Icon name="calendar" size={20} /></span><p>No appointments yet.</p></div>}
+              {!upcomingAppointments.length && <div className="schedule-empty"><span><Icon name="calendar" size={20} /></span><p>No outstanding appointments.</p></div>}
             </div>
           </section>
         </div>

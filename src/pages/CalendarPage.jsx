@@ -81,17 +81,17 @@ function CalendarPage() {
   }, [visibleMonth])
 
   const focusedAppointments = appointments
-    .filter((item) => item.date === focusedDate)
+    .filter((item) => !item.completed && item.date === focusedDate)
     .sort((a, b) => a.time.localeCompare(b.time))
   const focusedTasks = tasks.filter((item) => !item.done && item.dueDate === focusedDate)
-  const selectedAppointments = appointments.filter((item) => item.date === selectedDate)
+  const selectedAppointments = appointments.filter((item) => !item.completed && item.date === selectedDate)
   const selectedTasks = tasks.filter((item) => !item.done && item.dueDate === selectedDate)
   const upcomingTasks = tasks.filter((item) => !item.done && item.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5)
-  const upcomingAppointments = appointments.filter((item) => item.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 5)
+  const upcomingAppointments = appointments.filter((item) => !item.completed && item.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 5)
 
   useEffect(() => {
     if (!focusedDate || !timelineRef.current) return
-    const firstAppointment = appointments.filter((item) => item.date === focusedDate).sort((a, b) => a.time.localeCompare(b.time))[0]
+    const firstAppointment = appointments.filter((item) => !item.completed && item.date === focusedDate).sort((a, b) => a.time.localeCompare(b.time))[0]
     const start = firstAppointment ? toMinutes(firstAppointment.time) : 8 * 60
     timelineRef.current.scrollTop = Math.max(0, ((start / 60) * hourHeight) - 90)
   }, [focusedDate, appointments])
@@ -209,6 +209,11 @@ function CalendarPage() {
     setAppointments((current) => current.filter((item) => item.id !== id))
   }
 
+  async function completeAppointment(item) {
+    const { appointment } = await api('/api/appointments/' + item.id, { method: 'PATCH', body: JSON.stringify({ completed: true }) })
+    setAppointments((current) => current.map((existing) => existing.id === appointment.id ? appointment : existing))
+  }
+
   async function toggleFocusedTask(task) {
     const data = await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ done: !task.done }) })
     setTasks((current) => current.map((item) => item.id === task.id ? data.task : item))
@@ -253,7 +258,7 @@ function CalendarPage() {
             <div className="month-grid month-grid--rich">
               {calendarDays.map((date) => {
                 const dateKey = toDateKey(date)
-                const dayAppointments = appointments.filter((item) => item.date === dateKey).sort((a, b) => a.time.localeCompare(b.time))
+                const dayAppointments = appointments.filter((item) => !item.completed && item.date === dateKey).sort((a, b) => a.time.localeCompare(b.time))
                 const dayTasks = tasks.filter((item) => !item.done && item.dueDate === dateKey)
                 const itemCount = dayAppointments.length + dayTasks.length
                 const classes = ['calendar-day', 'calendar-day--rich', date.getMonth() !== visibleMonth.getMonth() ? 'calendar-day--outside' : '', dateKey === today ? 'calendar-day--today' : '', dateKey === selectedDate ? 'calendar-day--selected' : ''].filter(Boolean).join(' ')
@@ -298,7 +303,7 @@ function CalendarPage() {
                     <div className="mobile-day-planner__events">
                       {focusedAppointments.map((item) => {
                         const endTime = item.endTime || defaultEnd(item.time)
-                        return <button key={item.id} onClick={() => { setEditError(''); setEditingAppointment({ ...item, endTime }) }} type="button"><time>{item.time}<span>{endTime}</span></time><span><strong>{item.title}</strong><small>{item.location || 'Tap to edit'}</small></span><Icon name="edit" size={15} /></button>
+                        return <article className="mobile-day-event" key={item.id}><time>{item.time}<span>{endTime}</span></time><span><strong>{item.title}</strong><small>{item.location || 'No location'}</small></span><button aria-label={`Edit ${item.title}`} className="edit-button" onClick={() => { setEditError(''); setEditingAppointment({ ...item, endTime }) }} type="button"><Icon name="edit" size={15} /></button><div className="mobile-day-event__actions"><button onClick={() => completeAppointment(item)} type="button"><Icon name="check" size={13} /> Mark as completed</button><ConfirmDeleteButton label={item.title} onConfirm={() => deleteAppointment(item.id)} /></div></article>
                       })}
                       {!focusedAppointments.length && <div className="mobile-day-planner__empty"><Icon name="calendar" size={19} /><span><strong>Your day is clear</strong><small>Add a time block when you’re ready.</small></span></div>}
                     </div>
@@ -338,7 +343,7 @@ function CalendarPage() {
                       <p>{focusedAppointments.length ? 'Select an event to edit it, or use the planner to add another.' : 'Use the planner to reserve time for something important.'}</p>
                        <div>{focusedAppointments.map((item) => {
                         const endTime = item.endTime || defaultEnd(item.time)
-                        return <article key={item.id}><time>{item.time}<span>–{endTime}</span></time><span><strong>{item.title}</strong><small>{item.location || 'No location'}</small></span><div className="row-actions"><button aria-label={'Edit ' + item.title} className="edit-button" onClick={() => { setEditError(''); setEditingAppointment({ ...item, endTime }) }} type="button"><Icon name="edit" size={14} /></button><ConfirmDeleteButton label={item.title} onConfirm={() => deleteAppointment(item.id)} /></div></article>
+                         return <article key={item.id}><time>{item.time}<span>–{endTime}</span></time><span><strong>{item.title}</strong><small>{item.location || 'No location'}</small></span><div className="row-actions"><button aria-label={'Mark ' + item.title + ' as completed'} className="complete-task-button" onClick={() => completeAppointment(item)} type="button"><Icon name="check" size={14} /></button><button aria-label={'Edit ' + item.title} className="edit-button" onClick={() => { setEditError(''); setEditingAppointment({ ...item, endTime }) }} type="button"><Icon name="edit" size={14} /></button><ConfirmDeleteButton label={item.title} onConfirm={() => deleteAppointment(item.id)} /></div></article>
                        })}</div>
                        {focusedTasks.length > 0 && <div className="day-focus__tasks"><p className="eyebrow">Outstanding tasks</p>{focusedTasks.map((task) => <article key={task.id}><span><strong>{task.title}</strong><small>{task.priority} priority</small></span><div className="row-actions"><button aria-label={`Mark ${task.title} as completed`} className="complete-task-button" onClick={() => toggleFocusedTask(task)} type="button"><Icon name="check" size={14} /></button><ConfirmDeleteButton label={task.title} onConfirm={() => deleteTask(task.id)} /></div></article>)}</div>}
                      </div>
