@@ -69,6 +69,12 @@ test('CivicFlow full API workflow', async (context) => {
   const register = await request('/api/auth/register', { method: 'POST', body: JSON.stringify({ firstName: 'Integration', email: 'integration@example.local', password: 'testing123' }) })
   assert.equal(register.status, 201)
   assert.match(cookie, /^civicflow_session=/)
+  const registration = await register.json()
+  assert.match(registration.sessionToken, /^[a-f0-9]{64}$/)
+
+  const bearerMe = await fetch(`${base}/api/auth/me`, { headers: { Authorization: `Bearer ${registration.sessionToken}` } })
+  assert.equal(bearerMe.status, 200)
+  assert.equal((await bearerMe.json()).user.email, 'integration@example.local')
 
   const me = await (await request('/api/auth/me')).json()
   assert.equal(me.user.firstName, 'Integration')
@@ -159,6 +165,16 @@ test('CivicFlow full API workflow', async (context) => {
   cookie = ''
   assert.equal((await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: 'integration@example.local', password: 'testing123' }) })).status, 401)
   assert.equal((await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: 'integration@example.local', password: 'updated456' }) })).status, 200)
+
+  const forgotPassword = await (await request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email: 'integration@example.local' }) })).json()
+  assert.match(forgotPassword.devResetUrl, /reset-password\?token=/)
+  const resetToken = new URL(forgotPassword.devResetUrl).searchParams.get('token')
+  const resetPassword = await request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token: resetToken, password: 'recovered789' }) })
+  assert.equal(resetPassword.status, 200)
+  assert.match((await resetPassword.json()).sessionToken, /^[a-f0-9]{64}$/)
+  cookie = ''
+  assert.equal((await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: 'integration@example.local', password: 'updated456' }) })).status, 401)
+  assert.equal((await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: 'integration@example.local', password: 'recovered789' }) })).status, 200)
 
   assert.equal((await request(`/api/appointments/${appointment.appointment.id}`, { method: 'DELETE' })).status, 204)
   assert.equal((await request(`/api/documents/${document.document.id}`, { method: 'DELETE' })).status, 204)

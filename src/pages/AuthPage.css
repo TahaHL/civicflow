@@ -21,9 +21,12 @@
 .auth-form input, .task-creator input, .task-creator select { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #d8e0dd; border-radius: 10px; outline: 0; background: #fff; color: var(--heading); font: inherit; font-size: 13px; }
 .auth-form input:focus, .task-creator input:focus, .task-creator select:focus { border-color: #5f8c7c; box-shadow: 0 0 0 3px rgba(74,125,107,.1); }
 .form-error { padding: 10px 12px; border-radius: 9px; color: #9c3d35; background: #ffebe8; font-size: 12px; }
+.form-success { padding: 10px 12px; border-radius: 9px; color: #21674f; background: #e4f7ef; font-size: 12px; line-height: 1.5; }
 .auth-submit { min-height: 50px; margin-top: 5px; padding: 0 18px; border: 0; border-radius: 11px; display: flex; align-items: center; justify-content: center; gap: 7px; background: #153f32; color: #fff; font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
 .auth-submit:disabled { opacity: .65; cursor: wait; }
 .auth-note { margin-top: 22px; color: #94a09c; font-size: 10px; text-align: center; }
+.forgot-password-link { margin: 15px auto 0; padding: 4px; border: 0; display: block; color: #6255d9; background: transparent; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.forgot-password-link:hover { text-decoration: underline; }
 .app-loading { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 12px; color: var(--muted); }
 .loading-mark { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: #173f32; color: #d9ff74; font-weight: 800; }
 

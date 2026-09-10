@@ -12,12 +12,17 @@
 NODE_ENV=production
 PORT=3001
 APP_ORIGIN=https://your-domain.example
+PUBLIC_APP_URL=https://your-domain.example
 DATABASE_URL=postgresql://user:password@host:5432/civicflow
 DATABASE_SSL=true
 DATABASE_SSL_REJECT_UNAUTHORIZED=true
+PASSWORD_RESET_SECRET=use-a-long-random-secret
+BREVO_API_KEY=your-brevo-api-key
+EMAIL_FROM=your-verified-sender@example.com
+EMAIL_FROM_NAME=CivicFlow
 ```
 
-Never commit a real `.env` file or database credentials.
+Never commit a real `.env` file, database credentials, email API key, or reset secret. `APP_ORIGIN` is an origin only; `PUBLIC_APP_URL` can include the deployment path (for example, `/civicflow`). Password reset links expire after 30 minutes and are sent through Brevo's transactional email API. `EMAIL_FROM` must match a sender verified in Brevo.
 
 ## Container deployment
 

@@ -31,7 +31,7 @@ app.use('/api', (request, response, next) => {
   if (originAllowed) {
     response.setHeader('Access-Control-Allow-Origin', requestOrigin)
     response.setHeader('Access-Control-Allow-Credentials', 'true')
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     response.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PATCH,DELETE,OPTIONS')
     response.setHeader('Vary', 'Origin')
   }
@@ -85,10 +85,17 @@ function createSession(response, database, userId) {
   database.sessions = database.sessions.filter((session) => session.expiresAt > Date.now())
   database.sessions.push({ token: sessionTokenHash(token), userId, expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 })
   response.setHeader('Set-Cookie', `${sessionCookieName}=${token}; HttpOnly; Path=/; Max-Age=604800${isProduction ? '; SameSite=None; Secure' : '; SameSite=Lax'}`)
+  return token
+}
+
+function requestSessionToken(request) {
+  const authorization = request.get('authorization') || ''
+  const bearer = authorization.match(/^Bearer\s+([a-f0-9]{64})$/i)?.[1]
+  return bearer || cookies(request)[sessionCookieName]
 }
 
 async function clearSession(request, response) {
-  const token = cookies(request)[sessionCookieName]
+  const token = requestSessionToken(request)
   if (token) {
     const database = await readDatabase()
     const tokenHash = sessionTokenHash(token)
@@ -99,7 +106,7 @@ async function clearSession(request, response) {
 }
 
 async function requireUser(request, response, next) {
-  const token = cookies(request)[sessionCookieName]
+  const token = requestSessionToken(request)
   const database = await readDatabase()
   const tokenHash = token ? sessionTokenHash(token) : ''
   const session = database.sessions.find((item) => item.token === tokenHash || item.token === token)
@@ -118,6 +125,66 @@ async function requireUser(request, response, next) {
 
 function publicUser(user) {
   return { id: user.id, firstName: user.firstName, email: user.email, preferences: { ...defaultPreferences, ...user.preferences } }
+}
+
+function resetSecret() {
+  return process.env.PASSWORD_RESET_SECRET || (!isProduction ? 'civicflow-development-reset-secret' : '')
+}
+
+function passwordFingerprint(user) {
+  return crypto.createHash('sha256').update(user.passwordHash).digest('hex').slice(0, 20)
+}
+
+function createPasswordResetToken(user) {
+  const secret = resetSecret()
+  if (!secret) return ''
+  const payload = Buffer.from(JSON.stringify({
+    userId: user.id,
+    expiresAt: Date.now() + 30 * 60 * 1000,
+    passwordFingerprint: passwordFingerprint(user),
+  })).toString('base64url')
+  const signature = crypto.createHmac('sha256', secret).update(payload).digest('base64url')
+  return `${payload}.${signature}`
+}
+
+function verifyPasswordResetToken(token, user) {
+  const secret = resetSecret()
+  const [payload, suppliedSignature] = String(token || '').split('.')
+  if (!secret || !payload || !suppliedSignature) return false
+  const expectedSignature = crypto.createHmac('sha256', secret).update(payload).digest()
+  let receivedSignature
+  try { receivedSignature = Buffer.from(suppliedSignature, 'base64url') } catch { return false }
+  if (receivedSignature.length !== expectedSignature.length || !crypto.timingSafeEqual(receivedSignature, expectedSignature)) return false
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
+    return data.userId === user.id && data.expiresAt > Date.now() && data.passwordFingerprint === passwordFingerprint(user)
+  } catch { return false }
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character])
+}
+
+async function sendPasswordResetEmail(user, resetUrl) {
+  if (!process.env.BREVO_API_KEY || !process.env.EMAIL_FROM) {
+    if (!isProduction) return
+    throw new Error('Password recovery email is not configured.')
+  }
+  const emailResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'api-key': process.env.BREVO_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: process.env.EMAIL_FROM_NAME || 'CivicFlow', email: process.env.EMAIL_FROM },
+      to: [{ email: user.email, name: user.firstName }],
+      subject: 'Reset your CivicFlow password',
+      htmlContent: `<p>Hello ${escapeHtml(user.firstName)},</p><p>Use the link below to choose a new CivicFlow password. It expires in 30 minutes.</p><p><a href="${escapeHtml(resetUrl)}">Reset my password</a></p><p>If you did not request this, you can ignore this email.</p>`,
+    }),
+  })
+  if (!emailResponse.ok) throw new Error('Password recovery email could not be sent.')
 }
 
 function daysFromToday(date) {
@@ -204,9 +271,9 @@ app.post('/api/auth/register', async (request, response, next) => {
 
     const user = { id: crypto.randomUUID(), firstName, email, passwordHash: await hashPassword(password), preferences: { ...defaultPreferences }, createdAt: new Date().toISOString() }
     database.users.push(user)
-    createSession(response, database, user.id)
+    const sessionToken = createSession(response, database, user.id)
     await writeDatabase(database)
-    response.status(201).json({ user: publicUser(user) })
+    response.status(201).json({ user: publicUser(user), sessionToken })
   } catch (error) { next(error) }
 })
 
@@ -217,9 +284,9 @@ app.post('/api/auth/login', async (request, response, next) => {
     const database = await readDatabase()
     const user = database.users.find((item) => item.email === email)
     if (!user || !(await passwordMatches(password, user.passwordHash))) return response.status(401).json({ message: 'Incorrect email or password.' })
-    createSession(response, database, user.id)
+    const sessionToken = createSession(response, database, user.id)
     await writeDatabase(database)
-    response.json({ user: publicUser(user) })
+    response.json({ user: publicUser(user), sessionToken })
   } catch (error) { next(error) }
 })
 
@@ -231,6 +298,42 @@ app.post('/api/auth/logout', async (request, response, next) => {
 })
 
 app.get('/api/auth/me', requireUser, (request, response) => response.json({ user: publicUser(request.user) }))
+
+app.post('/api/auth/forgot-password', async (request, response, next) => {
+  try {
+    const email = request.body.email?.trim().toLowerCase()
+    const database = await readDatabase()
+    const user = database.users.find((item) => item.email === email)
+    let devResetUrl
+    if (user) {
+      const token = createPasswordResetToken(user)
+      if (!token) return response.status(503).json({ message: 'Password recovery is temporarily unavailable.' })
+      const appUrl = (process.env.PUBLIC_APP_URL || allowedOrigins[0] || 'http://127.0.0.1:5173').replace(/\/$/, '')
+      const resetUrl = `${appUrl}${isProduction ? '/#/reset-password' : '/reset-password'}?token=${encodeURIComponent(token)}`
+      await sendPasswordResetEmail(user, resetUrl)
+      if (!isProduction) devResetUrl = resetUrl
+    }
+    response.json({ message: 'If that email belongs to a CivicFlow account, a reset link is on its way.', ...(devResetUrl ? { devResetUrl } : {}) })
+  } catch (error) { next(error) }
+})
+
+app.post('/api/auth/reset-password', async (request, response, next) => {
+  try {
+    const token = request.body.token
+    const password = request.body.password || ''
+    if (password.length < 8) return response.status(400).json({ message: 'Password must be at least 8 characters.' })
+    let payload
+    try { payload = JSON.parse(Buffer.from(String(token || '').split('.')[0], 'base64url').toString('utf8')) } catch { payload = null }
+    const database = await readDatabase()
+    const user = database.users.find((item) => item.id === payload?.userId)
+    if (!user || !verifyPasswordResetToken(token, user)) return response.status(400).json({ message: 'This reset link is invalid or has expired.' })
+    user.passwordHash = await hashPassword(password)
+    database.sessions = database.sessions.filter((session) => session.userId !== user.id)
+    const sessionToken = createSession(response, database, user.id)
+    await writeDatabase(database)
+    response.json({ user: publicUser(user), sessionToken })
+  } catch (error) { next(error) }
+})
 
 app.patch('/api/profile', requireUser, async (request, response, next) => {
   try {
@@ -269,7 +372,7 @@ app.patch('/api/profile/password', requireUser, async (request, response, next) 
     const user = database.users.find((item) => item.id === request.user.id)
     if (!(await passwordMatches(currentPassword, user.passwordHash))) return response.status(401).json({ message: 'Your current password is incorrect.' })
     user.passwordHash = await hashPassword(newPassword)
-    const currentToken = cookies(request)[sessionCookieName]
+    const currentToken = requestSessionToken(request)
     const currentTokenHash = sessionTokenHash(currentToken)
     database.sessions = database.sessions.filter((session) => session.userId !== user.id || session.token === currentToken || session.token === currentTokenHash)
     await writeDatabase(database)

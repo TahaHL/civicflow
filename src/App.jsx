@@ -16,6 +16,7 @@ function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/signin" element={<AuthPage />} />
+        <Route path="/reset-password" element={<AuthPage resetMode />} />
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />

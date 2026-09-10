@@ -48,6 +48,7 @@ function CalendarPage() {
   const [formError, setFormError] = useState('')
   const [editError, setEditError] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [isMobileCalendar, setIsMobileCalendar] = useState(false)
   const titleRef = useRef(null)
   const timelineRef = useRef(null)
   const dragStartRef = useRef(null)
@@ -59,6 +60,14 @@ function CalendarPage() {
         setTasks(taskData.tasks)
       })
       .catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 760px)')
+    const update = () => setIsMobileCalendar(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
   }, [])
 
   const calendarDays = useMemo(() => {
@@ -74,6 +83,9 @@ function CalendarPage() {
   const focusedAppointments = appointments
     .filter((item) => item.date === focusedDate)
     .sort((a, b) => a.time.localeCompare(b.time))
+  const focusedTasks = tasks.filter((item) => item.dueDate === focusedDate)
+  const selectedAppointments = appointments.filter((item) => item.date === selectedDate)
+  const selectedTasks = tasks.filter((item) => item.dueDate === selectedDate)
   const upcomingTasks = tasks.filter((item) => !item.done && item.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5)
   const upcomingAppointments = appointments.filter((item) => item.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 5)
 
@@ -107,6 +119,12 @@ function CalendarPage() {
     setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1))
   }
 
+  function changeVisibleMonth(amount) {
+    const next = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + amount, 1)
+    setVisibleMonth(next)
+    if (isMobileCalendar) setSelectedDate(toDateKey(next))
+  }
+
   function prepareAppointment(dateKey, start = 9 * 60, end = 10 * 60) {
     setForm({ title: '', date: dateKey, time: toTime(start), endTime: toTime(end), location: '', notes: '' })
     setSelection({ start, end })
@@ -123,6 +141,16 @@ function CalendarPage() {
     setComposing(false)
     setSelection(null)
     if (createNow) prepareAppointment(dateKey)
+  }
+
+  function selectCalendarDay(date) {
+    const dateKey = typeof date === 'string' ? date : toDateKey(date)
+    if (!isMobileCalendar) {
+      openDay(dateKey)
+      return
+    }
+    setSelectedDate(dateKey)
+    showMonth(dateKey)
   }
 
   function closeDay() {
@@ -181,6 +209,11 @@ function CalendarPage() {
     setAppointments((current) => current.filter((item) => item.id !== id))
   }
 
+  async function toggleFocusedTask(task) {
+    const data = await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ done: !task.done }) })
+    setTasks((current) => current.map((item) => item.id === task.id ? data.task : item))
+  }
+
   async function saveAppointmentEdit(event) {
     event.preventDefault()
     setSavingEdit(true)
@@ -206,9 +239,9 @@ function CalendarPage() {
             <div className="calendar-toolbar">
               <div><p className="eyebrow">Your month</p><h2>{new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(visibleMonth)}</h2></div>
               <div className="month-controls">
-                <button aria-label="Previous month" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))} type="button"><Icon name="arrow" size={18} /></button>
+                <button aria-label="Previous month" onClick={() => changeVisibleMonth(-1)} type="button"><Icon name="arrow" size={18} /></button>
                 <button onClick={() => { setSelectedDate(today); showMonth(today) }} type="button">Today</button>
-                <button aria-label="Next month" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))} type="button"><Icon name="arrow" size={18} /></button>
+                <button aria-label="Next month" onClick={() => changeVisibleMonth(1)} type="button"><Icon name="arrow" size={18} /></button>
               </div>
             </div>
             <div className="weekday-row">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => <span key={day}>{day}</span>)}</div>
@@ -217,20 +250,22 @@ function CalendarPage() {
                 const dateKey = toDateKey(date)
                 const dayAppointments = appointments.filter((item) => item.date === dateKey).sort((a, b) => a.time.localeCompare(b.time))
                 const dayTasks = tasks.filter((item) => !item.done && item.dueDate === dateKey)
+                const itemCount = dayAppointments.length + dayTasks.length
                 const classes = ['calendar-day', 'calendar-day--rich', date.getMonth() !== visibleMonth.getMonth() ? 'calendar-day--outside' : '', dateKey === today ? 'calendar-day--today' : '', dateKey === selectedDate ? 'calendar-day--selected' : ''].filter(Boolean).join(' ')
                 return (
-                  <button aria-label={'Open ' + formatDate(dateKey, { weekday: 'long', day: 'numeric', month: 'long' })} className={classes} key={dateKey} onClick={() => openDay(date)} type="button">
+                  <button aria-label={`${formatDate(dateKey, { weekday: 'long', day: 'numeric', month: 'long' })}, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`} className={classes} key={dateKey} onClick={() => selectCalendarDay(date)} type="button">
                     <span className="calendar-day__number">{date.getDate()}</span>
-                    <span className="calendar-day__entries">
-                      {dayAppointments.slice(0, 2).map((item) => <span className="calendar-entry calendar-entry--event" key={item.id}><time>{item.time}</time>{item.title}</span>)}
-                      {dayTasks.slice(0, Math.max(0, 2 - dayAppointments.length)).map((item) => <span className={'calendar-entry calendar-entry--task priority-dot--' + item.priority.toLowerCase()} key={item.id}>Due · {item.title}</span>)}
-                      {(dayAppointments.length + dayTasks.length) > 2 && <span className="calendar-entry-more">+{dayAppointments.length + dayTasks.length - 2} more</span>}
-                    </span>
+                    {itemCount > 0 && <span aria-hidden="true" className="calendar-day__count"><strong>{itemCount}</strong><small>{itemCount === 1 ? 'item' : 'items'}</small></span>}
                   </button>
                 )
               })}
             </div>
-            <p className="calendar-help"><Icon name="calendar" size={15} /> Select a date to enlarge it. Then click or drag over its timeline to block out time.</p>
+            <section className="mobile-day-preview" aria-live="polite">
+              <div className="mobile-day-preview__date"><strong>{formatDate(selectedDate, { day: 'numeric' })}</strong><span>{formatDate(selectedDate, { month: 'short' })}</span></div>
+              <div><p className="eyebrow">Selected day</p><h3>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h3><p>{selectedAppointments.length} event{selectedAppointments.length === 1 ? '' : 's'} · {selectedTasks.length} task{selectedTasks.length === 1 ? '' : 's'}</p></div>
+              <button onClick={() => openDay(selectedDate)} type="button">View full day <Icon name="arrow" size={15} /></button>
+            </section>
+            <p className="calendar-help"><Icon name="calendar" size={15} /><span className="calendar-help__desktop">Select a date to enlarge it and manage its schedule.</span><span className="calendar-help__mobile">Select a date, then choose View full day for its complete agenda.</span></p>
           </div>
 
           <section className="calendar-reminders panel" aria-labelledby="calendar-reminders-title">
@@ -244,14 +279,30 @@ function CalendarPage() {
 
         {focusedDate && (
           <div className="day-focus-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDay() }}>
-            <section aria-labelledby="day-focus-title" aria-modal="true" className="day-focus-dialog" role="dialog">
+            <section aria-labelledby="day-focus-title" aria-modal="true" className={`day-focus-dialog${composing ? ' day-focus-dialog--composing' : ''}`} role="dialog">
               <header className="day-focus__header">
-                <div><p className="eyebrow">Day planner</p><h2 id="day-focus-title">{formatDate(focusedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2><p>{focusedAppointments.length ? focusedAppointments.length + ' scheduled event' + (focusedAppointments.length === 1 ? '' : 's') : 'This day is open'}</p></div>
+                <div><p className="eyebrow">Full day</p><h2 id="day-focus-title">{formatDate(focusedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2><p>{focusedAppointments.length} event{focusedAppointments.length === 1 ? '' : 's'} · {focusedTasks.length} task{focusedTasks.length === 1 ? '' : 's'}</p></div>
                 <button aria-label="Close day planner" onClick={closeDay} type="button"><Icon name="close" size={19} /></button>
               </header>
-              <div className="day-focus__body">
+              <div className={`day-focus__body${composing ? ' day-focus__body--composing' : ''}`}>
                 <div className="day-focus__timeline-wrap">
                   <p className="drag-instruction"><span><Icon name="plus" size={14} /></span> Click or drag anywhere on the timeline to create a time block.</p>
+                  <div className="mobile-day-planner">
+                    <button className="primary-button mobile-day-planner__add" onClick={() => prepareAppointment(focusedDate)} type="button"><Icon name="plus" size={16} /> Add a time block</button>
+                    <div className="mobile-day-planner__heading"><p className="eyebrow">Your schedule</p><h3>{focusedAppointments.length ? 'A clear view of your day' : 'No timed events yet'}</h3></div>
+                    <div className="mobile-day-planner__events">
+                      {focusedAppointments.map((item) => {
+                        const endTime = item.endTime || defaultEnd(item.time)
+                        return <button key={item.id} onClick={() => { setEditError(''); setEditingAppointment({ ...item, endTime }) }} type="button"><time>{item.time}<span>{endTime}</span></time><span><strong>{item.title}</strong><small>{item.location || 'Tap to edit'}</small></span><Icon name="edit" size={15} /></button>
+                      })}
+                      {!focusedAppointments.length && <div className="mobile-day-planner__empty"><Icon name="calendar" size={19} /><span><strong>Your day is clear</strong><small>Add a time block when you’re ready.</small></span></div>}
+                    </div>
+                    <div className="mobile-day-planner__heading mobile-day-planner__heading--tasks"><p className="eyebrow">Tasks due</p><h3>{focusedTasks.length ? `${focusedTasks.length} to keep in view` : 'Nothing due today'}</h3></div>
+                    <div className="mobile-day-planner__tasks">
+                      {focusedTasks.map((task) => <button className={task.done ? 'mobile-day-task mobile-day-task--done' : 'mobile-day-task'} key={task.id} onClick={() => toggleFocusedTask(task)} type="button"><span className="mobile-day-task__check"><Icon name="check" size={14} /></span><span><strong>{task.title}</strong><small>{task.priority} priority · {task.done ? 'Completed' : 'Tap to complete'}</small></span></button>)}
+                      {!focusedTasks.length && <p className="mobile-day-planner__task-empty">A calm day—there are no tasks due.</p>}
+                    </div>
+                  </div>
                   <div className="day-focus__timeline-scroll" ref={timelineRef}>
                     <div aria-label="Daily timeline. Click or drag to schedule." className="day-focus__timeline" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} role="application" style={{ height: hours.length * hourHeight + 'px' }}>
                       {hours.map((hour) => <div className="day-focus__hour" key={hour} style={{ height: hourHeight + 'px', top: hour * hourHeight + 'px' }}><time>{String(hour).padStart(2, '0')}:00</time><span /></div>)}
@@ -265,10 +316,10 @@ function CalendarPage() {
                     </div>
                   </div>
                 </div>
-                <aside className="day-focus__side">
+                <aside className={`day-focus__side${composing ? '' : ' day-focus__side--summary'}`}>
                   {composing ? (
                     <form className="day-composer" onSubmit={addAppointment}>
-                      <div><p className="eyebrow">New time block</p><h3>Add to your schedule</h3></div>
+                      <div className="day-composer__intro"><span><Icon name="clock" size={18} /></span><div><p className="eyebrow">New time block</p><h3>Add to your schedule</h3><p>{formatDate(focusedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</p></div></div>
                       <label>Title<input maxLength={120} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="What are you doing?" ref={titleRef} required value={form.title} /></label>
                       <div className="day-composer__times"><label>Starts<input onChange={(event) => setForm({ ...form, time: event.target.value })} required type="time" value={form.time} /></label><label>Ends<input onChange={(event) => setForm({ ...form, endTime: event.target.value })} required type="time" value={form.endTime} /></label></div>
                       <label>Location<input maxLength={150} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Optional" value={form.location} /></label>
@@ -279,7 +330,7 @@ function CalendarPage() {
                   ) : (
                     <div className="day-focus__summary">
                       <p className="eyebrow">On this day</p><h3>{focusedAppointments.length ? 'Your schedule' : 'Nothing planned yet'}</h3>
-                      <p>{focusedAppointments.length ? 'Select an event to edit it, or drag an open space to add another.' : 'Drag across the timeline to reserve time for something important.'}</p>
+                      <p>{focusedAppointments.length ? 'Select an event to edit it, or use the planner to add another.' : 'Use the planner to reserve time for something important.'}</p>
                       <div>{focusedAppointments.map((item) => {
                         const endTime = item.endTime || defaultEnd(item.time)
                         return <article key={item.id}><time>{item.time}<span>–{endTime}</span></time><span><strong>{item.title}</strong><small>{item.location || 'No location'}</small></span><div className="row-actions"><button aria-label={'Edit ' + item.title} className="edit-button" onClick={() => { setEditError(''); setEditingAppointment({ ...item, endTime }) }} type="button"><Icon name="edit" size={14} /></button><ConfirmDeleteButton label={item.title} onConfirm={() => deleteAppointment(item.id)} /></div></article>

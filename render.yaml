@@ -13,6 +13,16 @@ services:
         value: production
       - key: APP_ORIGIN
         value: https://tahahl.github.io
+      - key: PUBLIC_APP_URL
+        value: https://tahahl.github.io/civicflow
+      - key: PASSWORD_RESET_SECRET
+        generateValue: true
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: CivicFlow
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_SSL
