@@ -2013,6 +2013,8 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
   .edit-dialog__footer > button,
   .edit-dialog__footer .primary-button { width: 100%; min-width: 0; min-height: 46px; padding-inline: 16px; border-radius: 12px; font-size: 11px; white-space: nowrap; }
   :root[data-theme='dark'] :is(.mobile-day-event, .mobile-day-task) { background: linear-gradient(120deg, #1a1c2e, #20213a); }
+  .day-focus-backdrop { padding: 14px; align-items: center; }
+  .day-focus-dialog { width: min(100%, 720px); height: min(850px, calc(100dvh - 28px)); max-height: calc(100dvh - 28px); margin: auto; border-radius: 24px; }
   .day-focus-backdrop--composing { padding: clamp(12px, 4vw, 24px); align-items: center; }
   .day-focus-backdrop--composing .day-focus-dialog--composing { width: min(100%, 560px); height: auto; max-height: calc(100dvh - 28px); margin: auto; border-radius: 24px; }
   .day-focus-backdrop--composing .day-focus__body--composing { min-height: 0; max-height: calc(100dvh - 135px); overflow-y: auto; }
