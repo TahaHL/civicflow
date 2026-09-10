@@ -1040,30 +1040,30 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
   .mobile-day-planner__heading h3 { margin-top: 3px; color: var(--heading); font-size: 17px; }
   .mobile-day-planner__heading--tasks { margin-top: 12px; }
   .mobile-day-planner__events { display: grid; gap: 8px; }
-  .mobile-day-event { width: 100%; min-height: 62px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 13px; display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 9px 11px; color: var(--text); background: var(--surface); text-align: left; }
-  .mobile-day-planner__events time { color: #6255d9; font-size: 10px; font-weight: 750; }
+  .mobile-day-event { width: 100%; min-height: 72px; padding: 13px; border: 1px solid rgba(113,100,232,.13); border-radius: 16px; display: grid; grid-template-columns: 52px minmax(0,1fr) auto; align-items: center; gap: 10px 12px; color: var(--text); background: linear-gradient(120deg, var(--surface), #faf9ff); box-shadow: 0 8px 22px rgba(32,31,67,.055); text-align: left; }
+  .mobile-day-planner__events time { min-height: 44px; border-radius: 11px; display: grid; place-content: center; color: #6255d9; background: #f0edff; font-size: 10px; font-weight: 750; text-align: center; }
   .mobile-day-planner__events time span, .mobile-day-planner__events strong, .mobile-day-planner__events small { display: block; }
   .mobile-day-planner__events time span { margin-top: 3px; color: var(--muted); }
   .mobile-day-planner__events strong { color: var(--heading); font-size: 11px; }
   .mobile-day-planner__events small { margin-top: 4px; color: var(--muted); font-size: 9px; }
   .mobile-day-planner__events svg { color: #7b8091; }
-  .mobile-day-event__actions { grid-column: 2 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
-  .mobile-day-event__actions > button:first-child { min-height: 32px; padding: 0 10px; border: 0; border-radius: 9px; display: inline-flex; align-items: center; gap: 5px; color: #5548c8; background: #efedff; font: inherit; font-size: 9px; font-weight: 750; cursor: pointer; }
-  .mobile-day-event__actions > button:first-child svg { color: currentColor; }
-  .mobile-day-event__actions .delete-button { width: 32px; height: 32px; }
+  .mobile-day-event > .edit-button { width: 36px; height: 36px; border-radius: 10px; color: #656a80; background: var(--surface-soft); }
+  .mobile-day-event__actions { grid-column: 1 / -1; }
   .mobile-day-planner__empty { min-height: 72px; padding: 13px; border-radius: 13px; display: flex; align-items: center; gap: 11px; color: #6255d9; background: var(--surface-soft); }
   .mobile-day-planner__empty strong, .mobile-day-planner__empty small { display: block; }
   .mobile-day-planner__empty strong { color: var(--heading); font-size: 11px; }
   .mobile-day-planner__empty small { margin-top: 3px; color: var(--muted); font-size: 9px; }
   .mobile-day-planner__tasks { display: grid; gap: 8px; }
-  .mobile-day-task { width: 100%; min-height: 58px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 13px; display: grid; grid-template-columns: 28px minmax(0,1fr); align-items: center; gap: 10px; color: var(--text); background: var(--surface); text-align: left; }
+  .mobile-day-task { width: 100%; min-height: 68px; padding: 13px; border: 1px solid rgba(113,100,232,.13); border-radius: 16px; display: grid; grid-template-columns: 32px minmax(0,1fr); align-items: center; gap: 10px; color: var(--text); background: linear-gradient(120deg, var(--surface), #faf9ff); box-shadow: 0 8px 22px rgba(32,31,67,.055); text-align: left; }
   .mobile-day-task__check { width: 25px; height: 25px; border: 1.5px solid #bfc2d0; border-radius: 8px; display: grid; place-items: center; color: transparent; }
   .mobile-day-task strong, .mobile-day-task small { display: block; }
   .mobile-day-task strong { color: var(--heading); font-size: 11px; }
   .mobile-day-task small { margin-top: 4px; color: var(--muted); font-size: 9px; }
-  .mobile-day-task__actions { grid-column: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
-  .mobile-day-task__actions > button:first-child { min-height: 32px; padding: 0 10px; border: 0; border-radius: 9px; display: inline-flex; align-items: center; gap: 5px; color: #5548c8; background: #efedff; font: inherit; font-size: 9px; font-weight: 750; cursor: pointer; }
-  .mobile-day-task__actions .delete-button { width: 32px; height: 32px; }
+  .mobile-day-task__actions { grid-column: 1 / -1; }
+  .calendar-item-actions { padding-top: 10px; border-top: 1px solid var(--border); display: grid; grid-template-columns: minmax(0,1fr) 38px; align-items: center; gap: 8px; }
+  .calendar-complete-action { width: 100%; min-height: 38px; padding: 0 14px; border: 0; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: #fff; background: linear-gradient(105deg, #7164e8, #6255d9); box-shadow: 0 7px 18px rgba(93,80,214,.18); font: inherit; font-size: 10px; font-weight: 750; cursor: pointer; white-space: nowrap; }
+  .calendar-complete-action svg { color: currentColor; }
+  .calendar-item-actions .delete-button { width: 38px; height: 38px; border: 1px solid #f0d9d6; border-radius: 11px; color: #ba5a52; background: #fff6f4; }
   .mobile-day-task--done .mobile-day-task__check { border-color: #7164e8; color: #fff; background: #7164e8; }
   .mobile-day-task--done strong { color: var(--muted); text-decoration: line-through; }
   .mobile-day-planner__task-empty { padding: 15px; border-radius: 13px; color: var(--muted); background: var(--surface-soft); font-size: 10px; text-align: center; }
@@ -2007,4 +2007,12 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
   .day-composer__actions { display: grid; grid-template-columns: 1fr 1fr; }
   .day-composer__actions .secondary-button,
   .day-composer__actions .primary-button { width: 100%; min-width: 0; padding-inline: 12px; font-size: 10px; }
+  .edit-dialog__footer { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); gap: 10px; }
+  .edit-dialog__footer > button,
+  .edit-dialog__footer .primary-button { width: 100%; min-width: 0; min-height: 46px; padding-inline: 16px; border-radius: 12px; font-size: 11px; white-space: nowrap; }
+  :root[data-theme='dark'] :is(.mobile-day-event, .mobile-day-task) { background: linear-gradient(120deg, #1a1c2e, #20213a); }
+}
+
+@media (max-width: 760px) and (prefers-color-scheme: dark) {
+  :root[data-theme='system'] :is(.mobile-day-event, .mobile-day-task) { background: linear-gradient(120deg, #1a1c2e, #20213a); }
 }
