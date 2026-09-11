@@ -909,7 +909,8 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
 }
 .day-focus-dialog {
   width: min(1180px, 100%);
-  height: min(850px, calc(100vh - 24px));
+  height: min(850px, calc(100dvh - 2 * clamp(12px, 3vw, 34px)));
+  max-height: calc(100dvh - 2 * clamp(12px, 3vw, 34px));
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.6);
   border-radius: 26px;
@@ -931,7 +932,7 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
 .drag-instruction { margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
 .drag-instruction > span { width: 25px; height: 25px; border-radius: 8px; display: grid; place-items: center; color: #315bea; background: #edf1ff; }
 .day-focus__timeline-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); scrollbar-width: thin; }
-.day-focus__timeline { position: relative; min-width: 390px; touch-action: none; user-select: none; cursor: crosshair; }
+.day-focus__timeline { position: relative; min-width: 0; touch-action: pan-y; user-select: none; cursor: crosshair; }
 .day-focus__hour { position: absolute; left: 0; width: 100%; display: grid; grid-template-columns: 62px minmax(0,1fr); pointer-events: none; }
 .day-focus__hour time { padding: 5px 9px 0 0; color: var(--muted); font-size: 9px; text-align: right; transform: translateY(-50%); }
 .day-focus__hour span { border-top: 1px solid var(--border); }
@@ -1561,7 +1562,7 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
 .cashflow-bar { height: 7px; margin-top: 27px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); }
 .cashflow-bar span { height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, #8c80f3, #45c9bf); transition: width 400ms ease; }
 .cashflow-legend { margin-top: 9px; display: flex; justify-content: space-between; color: #8e92ab; font-size: 9px; font-weight: 650; }
-.money-metrics { padding: 27px; display: grid; align-content: center; background: rgba(255,255,255,.055); backdrop-filter: blur(8px); }
+.money-metrics { padding: 27px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; background: rgba(255,255,255,.055); backdrop-filter: blur(8px); }
 .money-metrics article { padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,.09); display: flex; align-items: center; gap: 12px; }
 .money-metrics article:last-child { border-bottom: 0; }
 .money-metrics article > span { width: 37px; height: 37px; border-radius: 11px; display: grid; place-items: center; }
@@ -1600,6 +1601,7 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
 .budget-rollover input { width: 15px; min-height: 15px; accent-color: #7164e8; }
 .budget-form .primary-button { min-height: 40px; padding-inline: 14px; font-size: 9px; }
 .budget-message { grid-column: 1 / -1; margin: 0; color: #5f56bd; font-size: 9px; font-weight: 650; }
+.budget-explanation { grid-column: 1 / -1; color: var(--muted); font-size: 12px; line-height: 1.65; }
 .budget-list { margin-top: 17px; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 11px; }
 .budget-card { padding: 15px; border: 1px solid #e9e9f0; border-radius: 13px; background: #fff; }
 .budget-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -1971,6 +1973,13 @@ button.confirm-delete--armed:hover { color: #fff !important; background: #a9433a
   .money-creator__fields, .budget-form { grid-template-columns: 1fr; }
   .money-title-field { grid-column: 1; }
   .money-creator__fields .primary-button, .budget-form .primary-button { width: 100%; }
+}
+
+/* Keep every financial entry type visible between phone and desktop layouts. */
+@container (max-width: 900px) {
+  .money-creator { grid-template-columns: minmax(0, 1fr); }
+  .money-type-tabs { grid-column: 1; width: min(100%, 320px); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  .money-type-tabs button { min-width: 0; min-height: 40px; padding-inline: 8px; }
 }
 
 /* Keep the compact navigation optically centred on every small viewport. */

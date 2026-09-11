@@ -5,6 +5,7 @@ import EditDialog from '../components/EditDialog'
 import Icon from '../components/Icon'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../hooks/useAuth'
+import { useDataRefresh } from '../hooks/useDataRefresh'
 import { api } from '../lib/api'
 import './Dashboard.css'
 
@@ -54,14 +55,14 @@ function CalendarPage() {
   const timelineRef = useRef(null)
   const dragStartRef = useRef(null)
 
-  useEffect(() => {
+  useDataRefresh(() => {
     Promise.all([api('/api/appointments'), api('/api/tasks')])
       .then(([appointmentData, taskData]) => {
         setAppointments(appointmentData.appointments)
         setTasks(taskData.tasks)
       })
       .catch(console.error)
-  }, [])
+  })
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 760px)')
@@ -169,6 +170,7 @@ function CalendarPage() {
   }
 
   function startDrag(event) {
+    if (event.pointerType === 'touch' || event.button !== 0) return
     if (event.target.closest('.timeline-event')) return
     const start = timelineMinute(event)
     dragStartRef.current = start

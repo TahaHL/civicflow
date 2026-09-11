@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import ConfirmDeleteButton from '../components/ConfirmDeleteButton'
 import EditDialog from '../components/EditDialog'
 import Header from '../components/Header'
 import Icon from '../components/Icon'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../hooks/useAuth'
+import { useDataRefresh } from '../hooks/useDataRefresh'
 import { api } from '../lib/api'
 import './Dashboard.css'
 
@@ -42,11 +43,11 @@ function MoneyPage() {
   const [editError, setEditError] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
 
-  useEffect(() => {
+  useDataRefresh(() => {
     Promise.all([api('/api/money'), api('/api/budgets')])
       .then(([moneyData, budgetData]) => { setRecords(moneyData.records); setBudgets(budgetData.budgets) })
       .catch((requestError) => setError(requestError.message))
-  }, [])
+  })
 
   const monthRecords = useMemo(() => records.filter((record) => record.date.startsWith(selectedMonth)), [records, selectedMonth])
   const income = monthRecords.filter((record) => record.type === 'income').reduce((sum, record) => sum + record.amountPence, 0)
@@ -90,7 +91,7 @@ function MoneyPage() {
   function money(pence, showSign = false) {
     if (privateMode) return '••••'
     const value = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Math.abs(pence) / 100)
-    return showSign && pence !== 0 ? `${pence > 0 ? '+' : '−'}${value}` : value
+    return pence < 0 ? `−${value}` : showSign && pence > 0 ? `+${value}` : value
   }
 
   function updateForm(event) {
@@ -120,7 +121,8 @@ function MoneyPage() {
     try {
       const { record } = await api('/api/money', { method: 'POST', body: JSON.stringify(form) })
       setRecords((current) => [record, ...current])
-      setForm({ ...emptyForm, type: form.type, category: form.type === 'income' ? 'Income' : emptyForm.category })
+      setSelectedMonth(record.date.slice(0, 7))
+      setForm({ ...emptyForm, date: record.date, type: form.type, category: form.type === 'income' ? 'Income' : emptyForm.category })
     } catch (requestError) { setError(requestError.message) }
   }
 
@@ -266,8 +268,9 @@ function MoneyPage() {
             <form className="budget-form" onSubmit={saveBudget}>
               <label>Category<select name="category" onChange={updateBudgetForm} value={budgetForm.category}>{categories.filter((item) => item !== 'Income').map((item) => <option key={item}>{item}</option>)}</select></label>
               <label>Monthly limit (£)<input min="0.01" name="limit" onChange={updateBudgetForm} placeholder="0.00" required step="0.01" type="number" value={budgetForm.limit} /></label>
-              <label className="budget-rollover"><input checked={budgetForm.rollover} name="rollover" onChange={updateBudgetForm} type="checkbox" /> Roll unused budget forward</label>
+              <label className="budget-rollover"><input checked={budgetForm.rollover} name="rollover" onChange={updateBudgetForm} type="checkbox" /> Include last month’s unused limit</label>
               <button className="primary-button" type="submit">Save budget</button>
+              <p className="budget-explanation">Choose a category and the most you want to spend in {labelMonth(selectedMonth)}. For example, a £300 groceries limit with £80 of recorded spending leaves £220. Spending and paid bills update your progress automatically; unpaid bills are reserved in “Available after bills”. Budgets do not create transactions. Copy a previous month’s plan to reuse its limits.</p>
               {budgetMessage && <p className="budget-message" role="status">{budgetMessage}</p>}
             </form>
             <div className="budget-list">
@@ -330,7 +333,7 @@ function MoneyPage() {
           {editingBudget && <>
             <label>Category<select name="category" onChange={(event) => setEditingBudget((current) => ({ ...current, category: event.target.value }))} value={editingBudget.category}>{categories.filter((item) => item !== 'Income').map((item) => <option key={item}>{item}</option>)}</select></label>
             <label>Monthly limit (£)<input min="0.01" name="limit" onChange={(event) => setEditingBudget((current) => ({ ...current, limit: event.target.value }))} required step="0.01" type="number" value={editingBudget.limit} /></label>
-            <label className="edit-checkbox edit-field--full"><input checked={editingBudget.rollover} onChange={(event) => setEditingBudget((current) => ({ ...current, rollover: event.target.checked }))} type="checkbox" /> Roll unused budget into the following month</label>
+            <label className="edit-checkbox edit-field--full"><input checked={editingBudget.rollover} onChange={(event) => setEditingBudget((current) => ({ ...current, rollover: event.target.checked }))} type="checkbox" /> Include last month’s unused limit</label>
             <p className="edit-context edit-field--full">Changes apply to {labelMonth(editingBudget.month)}.</p>
           </>}
         </EditDialog>

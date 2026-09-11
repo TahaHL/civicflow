@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/Header'
 import ConfirmDeleteButton from '../components/ConfirmDeleteButton'
@@ -8,6 +8,7 @@ import Sidebar from '../components/Sidebar'
 import SummaryCard from '../components/SummaryCard'
 import TaskProgress from '../components/TaskProgress'
 import { useAuth } from '../hooks/useAuth'
+import { useDataRefresh } from '../hooks/useDataRefresh'
 import { api } from '../lib/api'
 import './Dashboard.css'
 
@@ -25,7 +26,7 @@ function Dashboard() {
   const [savingEdit, setSavingEdit] = useState(false)
   const quickAddRef = useRef(null)
 
-  useEffect(() => {
+  useDataRefresh(() => {
     Promise.all([api('/api/tasks'), api('/api/appointments'), api('/api/notifications'), api('/api/money')])
       .then(([taskData, appointmentData, notificationData, moneyData]) => {
         setTasks(taskData.tasks)
@@ -34,7 +35,7 @@ function Dashboard() {
         setMoneyRecords(moneyData.records)
       })
       .catch(console.error)
-  }, [])
+  })
 
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`

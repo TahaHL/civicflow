@@ -158,6 +158,11 @@ test('CivicFlow full API workflow', async (context) => {
   assert.ok(alerts.notifications.some((item) => item.type === 'appointment'))
   assert.ok(alerts.notifications.some((item) => item.type === 'document'))
   assert.ok(alerts.unreadCount > 0)
+  assert.ok(!alerts.notifications.some((item) => item.type === 'task'), 'Completed tasks must not produce reminders')
+  await request('/api/notifications/read-all', { method: 'POST' })
+  assert.equal((await (await request('/api/notifications')).json()).unreadCount, 0)
+  await request(`/api/notifications/${alerts.notifications[0].id}`, { method: 'PATCH', body: JSON.stringify({ dismissed: true }) })
+  assert.ok(!(await (await request('/api/notifications')).json()).notifications.some((item) => item.id === alerts.notifications[0].id))
 
   const profile = await (await request('/api/profile', { method: 'PATCH', body: JSON.stringify({ firstName: 'Updated' }) })).json()
   assert.equal(profile.user.firstName, 'Updated')
@@ -165,6 +170,8 @@ test('CivicFlow full API workflow', async (context) => {
   assert.equal(preferences.user.preferences.documentReminders, false)
   assert.equal(preferences.user.preferences.theme, 'dark')
 
+  assert.equal((await request('/api/profile/password', { method: 'PATCH', body: JSON.stringify({ currentPassword: 'incorrect123', newPassword: 'updated456' }) })).status, 400)
+  assert.equal((await request('/api/auth/me')).status, 200, 'A mistyped current password must preserve the session')
   const passwordChange = await request('/api/profile/password', { method: 'PATCH', body: JSON.stringify({ currentPassword: 'testing123', newPassword: 'updated456' }) })
   assert.equal(passwordChange.status, 204)
   cookie = ''
@@ -180,6 +187,18 @@ test('CivicFlow full API workflow', async (context) => {
   cookie = ''
   assert.equal((await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: 'integration@example.local', password: 'updated456' }) })).status, 401)
   assert.equal((await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: 'integration@example.local', password: 'recovered789' }) })).status, 200)
+  assert.equal((await request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token: resetToken, password: 'reused123' }) })).status, 400, 'Reset links are single-use')
+
+  const ownerCookie = cookie
+  cookie = ''
+  assert.equal((await request('/api/tasks')).status, 401)
+  assert.equal((await request('/api/auth/register', { method: 'POST', body: JSON.stringify({ firstName: 'Second', email: 'second@example.local', password: 'testing123' }) })).status, 201)
+  assert.deepEqual((await (await request('/api/tasks')).json()).tasks, [])
+  assert.equal((await request(`/api/tasks/${createdTask.task.id}`, { method: 'PATCH', body: JSON.stringify({ done: false }) })).status, 404)
+  assert.equal((await request(`/api/money/${income.record.id}`, { method: 'DELETE' })).status, 404)
+  await request('/api/auth/logout', { method: 'POST' })
+  assert.equal((await request('/api/auth/me')).status, 401)
+  cookie = ownerCookie
 
   assert.equal((await request(`/api/appointments/${appointment.appointment.id}`, { method: 'DELETE' })).status, 204)
   assert.equal((await request(`/api/documents/${document.document.id}`, { method: 'DELETE' })).status, 204)

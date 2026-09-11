@@ -18,8 +18,8 @@ export async function api(path, options = {}) {
     const sessionToken = storedSessionToken()
     response = await fetch(`${apiOrigin}${path}`, {
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}), ...options.headers },
       ...options,
+      headers: { 'Content-Type': 'application/json', ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}), ...options.headers },
     })
   } catch {
     throw new Error('CivicFlow cannot reach its server right now. Please try again shortly.')
@@ -39,6 +39,9 @@ export async function api(path, options = {}) {
       window.dispatchEvent(new Event('civicflow:session-expired'))
     }
     throw new Error(data?.message || 'Something went wrong.')
+  }
+  if (options.method && options.method !== 'GET' && !path.startsWith('/api/auth/')) {
+    try { localStorage.setItem('civicflow:data-updated', String(Date.now())) } catch { /* Refresh on focus when storage is unavailable. */ }
   }
   return data
 }

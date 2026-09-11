@@ -1,20 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/Header'
 import Icon from '../components/Icon'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../hooks/useAuth'
+import { useDataRefresh } from '../hooks/useDataRefresh'
 import { api } from '../lib/api'
 import './Dashboard.css'
 
-const iconByType = { task: 'check', appointment: 'calendar', document: 'file' }
+const iconByType = { task: 'check', appointment: 'calendar', document: 'file', bill: 'wallet' }
 
 function NotificationsPage() {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState([])
   const [filter, setFilter] = useState('all')
 
-  useEffect(() => { api('/api/notifications').then((data) => setNotifications(data.notifications)).catch(console.error) }, [])
+  useDataRefresh(() => { api('/api/notifications').then((data) => setNotifications(data.notifications)).catch(console.error) })
 
   const visibleNotifications = useMemo(() => notifications.filter((notification) => filter === 'all' || !notification.read), [notifications, filter])
   const unreadCount = notifications.filter((notification) => !notification.read).length

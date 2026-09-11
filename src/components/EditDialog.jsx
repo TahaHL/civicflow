@@ -1,23 +1,34 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef } from 'react'
 import Icon from './Icon'
 
 function EditDialog({ children, error, onClose, onSubmit, open, saving = false, title }) {
   const dialogRef = useRef(null)
+  const handleKeyDown = useEffectEvent((event) => {
+    if (event.key === 'Escape' && !saving) { event.stopImmediatePropagation(); onClose() }
+    if (event.key !== 'Tab') return
+    const controls = [...dialogRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]')]
+      .filter((element) => element.getClientRects().length)
+    const first = controls[0]
+    const last = controls.at(-1)
+    if (!first) { event.preventDefault(); return }
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { event.preventDefault(); last.focus() }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+  })
 
   useEffect(() => {
     if (!open) return undefined
     const previousOverflow = document.body.style.overflow
+    const previousFocus = document.activeElement
     document.body.style.overflow = 'hidden'
     dialogRef.current?.focus()
-    function handleKeyDown(event) {
-      if (event.key === 'Escape' && !saving) onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
+    const onKeyDown = (event) => handleKeyDown(event)
+    document.addEventListener('keydown', onKeyDown, true)
     return () => {
       document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keydown', onKeyDown, true)
+      if (previousFocus?.isConnected) previousFocus.focus()
     }
-  }, [onClose, open, saving])
+  }, [open])
 
   if (!open) return null
 

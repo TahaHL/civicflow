@@ -6,6 +6,7 @@ import EditDialog from '../components/EditDialog'
 import Icon from '../components/Icon'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../hooks/useAuth'
+import { useDataRefresh } from '../hooks/useDataRefresh'
 import { api } from '../lib/api'
 import './Dashboard.css'
 
@@ -14,13 +15,13 @@ function TasksPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [tasks, setTasks] = useState([])
   const requestedView = searchParams.get('view')
-  const [filter, setFilter] = useState(requestedView === 'deadlines' ? 'deadlines' : requestedView === 'open' ? 'open' : 'all')
+  const filter = ['deadlines', 'open', 'completed'].includes(requestedView) ? requestedView : 'all'
   const [form, setForm] = useState({ title: '', dueDate: '', priority: 'Medium' })
   const [editingTask, setEditingTask] = useState(null)
   const [editError, setEditError] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
 
-  useEffect(() => { api('/api/tasks').then((data) => setTasks(data.tasks)).catch(console.error) }, [])
+  useDataRefresh(() => { api('/api/tasks').then((data) => setTasks(data.tasks)).catch(console.error) })
 
   const today = useMemo(() => {
     const now = new Date()
@@ -84,8 +85,7 @@ function TasksPage() {
   }
 
   function changeFilter(nextFilter) {
-    setFilter(nextFilter)
-    if (nextFilter === 'deadlines' || nextFilter === 'open') setSearchParams({ view: nextFilter }, { replace: true })
+    if (nextFilter !== 'all') setSearchParams({ view: nextFilter }, { replace: true })
     else setSearchParams({}, { replace: true })
   }
 

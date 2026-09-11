@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Header from '../components/Header'
 import ConfirmDeleteButton from '../components/ConfirmDeleteButton'
 import EditDialog from '../components/EditDialog'
@@ -6,6 +6,7 @@ import Icon from '../components/Icon'
 import Sidebar from '../components/Sidebar'
 import SummaryCard from '../components/SummaryCard'
 import { useAuth } from '../hooks/useAuth'
+import { useDataRefresh } from '../hooks/useDataRefresh'
 import { api } from '../lib/api'
 import './Dashboard.css'
 
@@ -35,7 +36,7 @@ function DocumentsPage() {
   const [savingEdit, setSavingEdit] = useState(false)
   const nameRef = useRef(null)
 
-  useEffect(() => { api('/api/documents').then((data) => setDocuments(data.documents)).catch(console.error) }, [])
+  useDataRefresh(() => { api('/api/documents').then((data) => setDocuments(data.documents)).catch(console.error) })
 
   const visibleDocuments = useMemo(() => documents.filter((document) => {
     const matchesSearch = `${document.name} ${document.issuer}`.toLowerCase().includes(search.toLowerCase())
